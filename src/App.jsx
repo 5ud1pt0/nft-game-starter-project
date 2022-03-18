@@ -5,6 +5,8 @@ import twitterLogo from './assets/twitter-logo.svg';
 import SelectCharacter from './Components/SelectCharacter';
 import myEpicGame from './utils/MyEpicGame.json';
 import { CONTRACT_ADDRESS, transformCharacterData } from './constants';
+import Arena from './Components/Arena';
+import LoadingIndicator from './Components/LoadingIndicator';
 
 // Constants
 const TWITTER_HANDLE = '_buildspace';
@@ -21,14 +23,23 @@ const App = () => {
  */
 const [characterNFT, setCharacterNFT] = useState(null);
 
-
+/*
+* New state property added here
+*/
+const [isLoading, setIsLoading] = useState(false);
   // Actions
+  
+    // Actions
   const checkIfWalletIsConnected = async () => {
     try {
       const { ethereum } = window;
 
       if (!ethereum) {
         console.log('Make sure you have MetaMask!');
+        /*
+         * We set isLoading here because we use return in the next line
+         */
+        setIsLoading(false);
         return;
       } else {
         console.log('We have the ethereum object', ethereum);
@@ -46,19 +57,31 @@ const [characterNFT, setCharacterNFT] = useState(null);
     } catch (error) {
       console.log(error);
     }
-  };
+    /*
+     * We release the state property after all the function logic
+     */
+    setIsLoading(false);
+};
 
+
+  
 
   // Render Methods
-const renderContent = () => {
+
+
+  const renderContent = () => {
   /*
-   * Scenario #1
+   * If the app is currently loading, just render out LoadingIndicator
    */
+  if (isLoading) {
+    return <LoadingIndicator />;
+  }
+
   if (!currentAccount) {
     return (
       <div className="connect-wallet-container">
         <img
-          src="./src/assets/ramayana.jpeg"
+          src="https://raw.githubusercontent.com/5ud1pt0/epic-game/master/assets/ramayana.jpeg"
           alt="Ramayana JPEG"
         />
         <button
@@ -69,14 +92,15 @@ const renderContent = () => {
         </button>
       </div>
     );
-    /*
-     * Scenario #2
-     */
   } else if (currentAccount && !characterNFT) {
     return <SelectCharacter setCharacterNFT={setCharacterNFT} />;
+  } else if (currentAccount && characterNFT) {
+    return (
+      <Arena characterNFT={characterNFT} setCharacterNFT={setCharacterNFT} />
+    );
   }
 };
-  
+ 
   /*
    * Implement your connectWallet method here
    */
@@ -105,30 +129,16 @@ const renderContent = () => {
       console.log(error);
     }
   };
-
-  useEffect(() => {
-    checkIfWalletIsConnected();
-  }, []);
-
-
- useEffect(() => {
-  const checkNetwork = async () => {
-  try { 
-    if (window.ethereum.networkVersion !== '4') {
-      alert("Please connect to Rinkeby!")
-    }
-  } catch(error) {
-    console.log(error)
-  }
-}
-  }, [currentAccount]);
-
-
-  
+// UseEffects
 useEffect(() => {
   /*
-   * The function we will call that interacts with out smart contract
+   * Anytime our component mounts, make sure to immiediately set our loading state
    */
+  setIsLoading(true);
+  checkIfWalletIsConnected();
+}, []);
+
+useEffect(() => {
   const fetchNFTMetadata = async () => {
     console.log('Checking for Character NFT on address:', currentAccount);
 
@@ -140,31 +150,30 @@ useEffect(() => {
       signer
     );
 
-    const txn = await gameContract.checkIfUserHasNFT();
-    if (txn.name) {
+    const characterNFT = await gameContract.checkIfUserHasNFT();
+    if (characterNFT.name) {
       console.log('User has character NFT');
-      setCharacterNFT(transformCharacterData(txn));
-    } else {
-      console.log('No character NFT found');
+      setCharacterNFT(transformCharacterData(characterNFT));
     }
+
+    /*
+     * Once we are done with all the fetching, set loading state to false
+     */
+    setIsLoading(false);
   };
 
-  /*
-   * We only want to run this, if we have a connected wallet
-   */
   if (currentAccount) {
     console.log('CurrentAccount:', currentAccount);
     fetchNFTMetadata();
   }
-}, [currentAccount]);
-  
+}, [currentAccount]); 
 
   return (
     <div className="App">
       <div className="container">
         <div className="header-container">
           <p className="header gradient-text">Rāmāyaṇa 🏹</p>
-          <p className="sub-text">Itihāsa of Bhārat!</p>
+          <p className="sub-text"> Bhārat Itihāsa </p>
           {/* This is where our button and image code used to be!
          *	Remember we moved it into the render method.
          */}
